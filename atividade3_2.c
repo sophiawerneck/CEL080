@@ -24,7 +24,7 @@ void app_main(void)
     myqueueMedTemp = xQueueCreate(1, sizeof(int));
     myqueueMedUmid = xQueueCreate(1, sizeof(int)); 
 
-    xTaskCreatePinnedToCore(vTaskLer, "Leitura", 2048, NULL, 1 , NULL, 0); # Verificar prioridades
+    xTaskCreatePinnedToCore(vTaskLer, "Leitura", 2048, NULL, 1 , NULL, 0); // Verificar prioridades
     xTaskCreatePinnedToCore(vTaskMedTemp, "Media_Temp", 2048, NULL, 1 , NULL, 0);
     xTaskCreatePinnedToCore(vTaskMedUmid, "Media_Umid", 2048, NULL, 1 , NULL, 0);
     xTaskCreatePinnedToCore(vTaskDisplay, "Display", 2048, NULL, 1 , NULL, 0);
@@ -35,8 +35,8 @@ void vTaskLer(void* pvparameters)
 
     ESP_LOGI("LEITURA","Task leitura inicializando");
 
-    int temperatura, umidade;
-    int cont = 0;
+    uint16_t temperatura, umidade;
+    uint16_t cont = 0;
     while (1)
     {
         data = DHT11_read();
@@ -59,10 +59,10 @@ void vTaskLer(void* pvparameters)
 void vTaskMedTemp(void* pvparameters)
 {
     ESP_LOGI("MEDIA_TEMP","Task Media_Temp inicializando");
-    int temperatura;
-    int media1;
-    int soma = 0;
-    int cont = 0;
+    uint16_t temperatura;
+    uint16_t media1;
+    uint16_t soma = 0;
+    uint16_t cont = 0;
 
     while(1)
     {   
@@ -83,10 +83,10 @@ void vTaskMedTemp(void* pvparameters)
 void vTaskMedUmid(void* pvparameters)
 {
     ESP_LOGI("MEDIA_UMID","Task Media_Umid inicializando");
-    int umidade;
-    int media2;
-    int soma = 0;
-    int cont = 0;
+    uint16_t umidade;
+    uint16_t media2;
+    uint16_t soma = 0;
+    uint16_t cont = 0;
 
     while(1)
     {   
@@ -106,8 +106,8 @@ void vTaskMedUmid(void* pvparameters)
 
 void vTaskDisplay(void* pvparameters)
 {
-    int MedTemp;
-    int MedUmid;
+    uint16_t MedTemp;
+    uint16_t MedUmid;
 
     ESP_LOGI("DISPLAY","Task Display inicializando");
     while(1)
@@ -118,4 +118,3 @@ void vTaskDisplay(void* pvparameters)
         vTaskDelay(pdMS_TO_TICKS(1000));
     }
 }
-
