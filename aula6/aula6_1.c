@@ -1,3 +1,4 @@
+// Está com problemas, resolvido em aula 6_2
 #include <stdio.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
