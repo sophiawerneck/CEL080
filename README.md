@@ -1,3 +1,3 @@
 # CEL080
 
-Códigos desenvolvidos em Software Embarcado.
+Códigos desenvolvidos na disciplina de Software Embarcado.
