@@ -35,13 +35,10 @@ void vTaskLer(void* pvparameters)
 
     ESP_LOGI("LEITURA","Task leitura inicializando");
 
-    uint16_t temperatura, umidade;
     uint16_t cont = 0;
     while (1)
     {
         data = DHT11_read();
-        temperatura = data.temperature;
-        umidade = data.humidity;
         cont++;
 
         xQueueSendToBack(myqueueTemp, &data.temperature, portMAX_DELAY);
@@ -52,7 +49,7 @@ void vTaskLer(void* pvparameters)
             cont = 0;
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -115,6 +112,6 @@ void vTaskDisplay(void* pvparameters)
         xQueueReceive(myqueueMedTemp, &MedTemp , portMAX_DELAY);
         xQueueReceive(myqueueMedUmid, &MedUmid , portMAX_DELAY);
         ESP_LOGI("DISPLAY", "Média Temperatura: %d, Média Umidade: %d", MedTemp, MedUmid);
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
