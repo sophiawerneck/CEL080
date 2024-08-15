@@ -64,7 +64,7 @@ void vTaskMedTemp(void* pvparameters)
     int cont = 0;
     int numMsgTemp = 0;
     //size_t bytes_recebidos_1;
-
+    
     while(1)
     {   
         xMessageBufferReceive(buffer_1, &temperatura, sizeof(temperatura), portMAX_DELAY);
