@@ -51,8 +51,9 @@ void vTaskLer(void* pvparameters)
     {
         data = DHT11_read();
         xMessageBufferSend(buffer_1, &data.temperature, sizeof(data.temperature), portMAX_DELAY);
+        //ESP_LOGW("LERTEMP", "%d",data.temperature);
         xMessageBufferSend(buffer_2, &data.humidity, sizeof(data.humidity), portMAX_DELAY);
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
@@ -60,25 +61,26 @@ void vTaskLer(void* pvparameters)
 void vTaskMedTemp(void* pvparameters)
 {
     ESP_LOGI("MEDIA_TEMP","Task Media_Temp inicializando");
-    uint16_t temperatura;
-    uint16_t media1;
-    uint16_t soma = 0;
-    uint16_t cont = 0;
+    int temperatura;
+    float media1;
+    int soma = 0;
+    int cont = 0;
 
     while(1)
     {   
-        xMessageBufferReceive(buffer1, &temperatura, sizeof(temperatura),portMAX_DELAY);
+        xMessageBufferReceive(buffer_1, &temperatura, sizeof(temperatura),portMAX_DELAY);
+        //ESP_LOGE("LERTEMP", "%d",temperatura);
         cont++;
         soma = soma + temperatura;
         if(cont == 10)
         {
             media1 = soma/10;
-            xMessageBufferSend(buffer3, &media1, sizeof(media1),portMAX_DELAY);
+            xMessageBufferSend(buffer_3, &media1, sizeof(media1),portMAX_DELAY);
             xEventGroupSetBits(ev_group,EV_TEMP);
             soma = 0;
             cont = 0;
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
@@ -86,25 +88,25 @@ void vTaskMedTemp(void* pvparameters)
 void vTaskMedUmid(void* pvparameters)
 {
     ESP_LOGI("MEDIA_UMID","Task Media_Umid inicializando");
-    uint16_t umidade;
-    uint16_t media2;
-    uint16_t soma = 0;
-    uint16_t cont = 0;
+    int umidade;
+    float media2;
+    int soma = 0;
+    int cont = 0;
 
     while(1)
     {   
-        xMessageBufferReceive(buffer2, &umidade, sizeof(umidade),portMAX_DELAY);
+        xMessageBufferReceive(buffer_2, &umidade, sizeof(umidade),portMAX_DELAY);
         cont++;
         soma = soma + umidade;
         if(cont == 10)
         {
             media2 = soma/10;
-            xMessageBufferSend(buffer4, &media2, sizeof(media2),portMAX_DELAY);
+            xMessageBufferSend(buffer_4, &media2, sizeof(media2),portMAX_DELAY);
             xEventGroupSetBits(ev_group,EV_UMID);
             soma = 0;
             cont = 0;
         }
-        vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
@@ -112,10 +114,10 @@ void vTaskDisplay(void* pvparameters)
 {
     ESP_LOGI("DISPLAY","Task Display inicializando");
     EventBits_t bits;
-    int temp;
-    int umid;
-    int temp_ref = 25;
-    int umid_ref = 55;
+    float temp;
+    float umid;
+    float temp_ref = 27.00;
+    float umid_ref = 55.00;
 
     while(1)
     {
@@ -126,7 +128,7 @@ void vTaskDisplay(void* pvparameters)
         
         if(bits == (EV_TEMP | EV_UMID)) 
         {
-            ESP_LOGI("DISPLAY", "Média Temperatura: %d, Média Umidade: %d",temp, umid);
+            ESP_LOGI("DISPLAY", "Média Temperatura: %f, Média Umidade: %f",temp, umid);
         }
         if (temp >= temp_ref)
         {
