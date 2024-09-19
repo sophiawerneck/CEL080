@@ -34,7 +34,7 @@ void vTaskAlarme(void* pvparameters);
 
 void app_main(void)
 {
-    gpio_pad_select_gpio(RELE_GPIO);
+    esp_rom_gpio_pad_select_gpio(RELE_GPIO);
     gpio_set_direction(RELE_GPIO, GPIO_MODE_OUTPUT);
 
     DHT11_init(DHT11_PIN);
@@ -119,7 +119,7 @@ void vTaskMedUmid(void* pvparameters)
 
 
     int umidade;
-    float media2;
+    float media2, tensao2;
     int soma = 0;
     int cont = 0;
 
@@ -131,7 +131,8 @@ void vTaskMedUmid(void* pvparameters)
         if(cont == 10)
         {
             media2 = soma/10;
-            xMessageBufferSend(buffer_5, &media2, sizeof(media2),portMAX_DELAY);
+            tensao2 = (media2/4095)*3.3*100;
+            xMessageBufferSend(buffer_5, &tensao2, sizeof(tensao2),portMAX_DELAY);
             xEventGroupSetBits(ev_group,EV_UMID);
             soma = 0;
             cont = 0;
@@ -146,7 +147,7 @@ void vTaskMedLum(void* pvparameters)
 
 
     int luminosidade;
-    float media3;
+    float media3, tensao3;
     int soma = 0;
     int cont = 0;
 
@@ -158,7 +159,8 @@ void vTaskMedLum(void* pvparameters)
         if(cont == 10)
         {
             media3 = soma/10;
-            xMessageBufferSend(buffer_6, &media3, sizeof(media3),portMAX_DELAY);
+            tensao3 = (media3/4095)*3.3*100;
+            xMessageBufferSend(buffer_6, &tensao3, sizeof(tensao3),portMAX_DELAY);
             xEventGroupSetBits(ev_group,EV_LUM);
             soma = 0;
             cont = 0;
@@ -188,7 +190,7 @@ void vTaskDisplay(void* pvparameters)
         
         if(bits == (EV_TEMP | EV_UMID | EV_LUM)) 
         {
-            ESP_LOGI("DISPLAY", "Média Temperatura: %f, Média Umidade: %f, Média Luminosidade: %f",temp, umid, lum);
+            ESP_LOGI("DISPLAY", "Média Temperatura: %f , Média Umidade: %f %%, Média Luminosidade: %f %%",temp, umid, lum);
         }
         if (temp >= temp_ref)
         {
