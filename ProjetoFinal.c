@@ -21,12 +21,13 @@
 
 struct dht11_reading data;
 
-MessageBufferHandle_t buffer_1, buffer_2, buffer_3, buffer_4;
+MessageBufferHandle_t buffer_1, buffer_2, buffer_3, buffer_4, buffer_5, buffer_6;
 EventGroupHandle_t ev_group ;
 
 void vTaskLer(void* pvparameters);
 void vTaskMedTemp(void* pvparameters);
 void vTaskMedUmid(void* pvparameters);
+void vTaskMedLum(void* pvparameters);
 void vTaskDisplay(void* pvparameters);
 void vTaskAlarme(void* pvparameters);
 
@@ -59,7 +60,7 @@ void vTaskLer(void* pvparameters)
     adc1_config_width(ADC_WIDTH_BIT_12);
     adc1_config_channel_atten(MOISTURE_SENSOR_ADC_CHANNEL, ADC_ATTEN_DB_11); //gpio34 - d34
 
-    adc1_config_channel_atten(LDR_ADC_CHANNEL, ADC_ATTEN_DB_11);
+    adc1_config_channel_atten(LDR_ADC_CHANNEL, ADC_ATTEN_DB_11); //gpio35 - d35
 
     while (1)
     {
@@ -73,8 +74,8 @@ void vTaskLer(void* pvparameters)
         xMessageBufferSend(buffer_2, &valor_umidade, sizeof(valor_umidade), portMAX_DELAY);
 
         //Ler luminosidade
-        int valor_lum = adc1_get_raw(LDR_ACD_CHANNEL);
-        ESP_LOGW("LEITURA", "Valor do sensor de luminosidade: %d", valor_umidade);
+        int valor_lum = adc1_get_raw(LDR_ADC_CHANNEL);
+        ESP_LOGW("LEITURA", "Valor do sensor de luminosidade: %d", valor_lum);
         xMessageBufferSend(buffer_3, &valor_lum, sizeof(valor_lum), portMAX_DELAY);
 
         vTaskDelay(pdMS_TO_TICKS(300));
@@ -171,7 +172,7 @@ void vTaskDisplay(void* pvparameters)
     float lum;
     float temp_ref = 30.00;
     float umid_ref = 55.00;
-    float lum_ref = 70.00;
+    float lum_ref = 50.00;
 
     while(1)
     {
