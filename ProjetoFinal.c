@@ -16,8 +16,8 @@
 #define EV_ALARM_UMID (1 << 4)
 #define EV_ALARM_LUM (1 << 5)
 
-#define MOISTURE_SENSOR_ADC_CHANNEL ADC1_CHANNEL_6
-#define LDR_ADC_CHANNEL ADC1_CHANNEL_7
+#define MOISTURE_SENSOR_ADC_CHANNEL ADC1_CHANNEL_5
+#define LDR_ADC_CHANNEL ADC1_CHANNEL_4
 
 struct dht11_reading data;
 
@@ -58,9 +58,9 @@ void vTaskLer(void* pvparameters)
     ESP_LOGI("LEITURA","Task leitura inicializando");
 
     adc1_config_width(ADC_WIDTH_BIT_12);
-    adc1_config_channel_atten(MOISTURE_SENSOR_ADC_CHANNEL, ADC_ATTEN_DB_11); //gpio34 - d34
+    adc1_config_channel_atten(MOISTURE_SENSOR_ADC_CHANNEL, ADC_ATTEN_DB_11); //d12
 
-    adc1_config_channel_atten(LDR_ADC_CHANNEL, ADC_ATTEN_DB_11); //gpio35 - d35
+    adc1_config_channel_atten(LDR_ADC_CHANNEL, ADC_ATTEN_DB_11); //d13
 
     while (1)
     {
