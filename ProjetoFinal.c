@@ -16,9 +16,9 @@
 #define EV_ALARM_UMID (1 << 4)
 #define EV_ALARM_LUM (1 << 5)
 
-#define MOISTURE_SENSOR_ADC_CHANNEL ADC1_CHANNEL_5
-#define LDR_ADC_CHANNEL ADC1_CHANNEL_4
-#define RELE_GPIO GPIO_NUM_14  //D17
+#define MOISTURE_SENSOR_ADC_CHANNEL ADC1_CHANNEL_5 //D12
+#define LDR_ADC_CHANNEL ADC1_CHANNEL_4 //D13
+#define RELE_IN1_GPIO GPIO_NUM_25  //D25
 
 struct dht11_reading data;
 
@@ -34,8 +34,8 @@ void vTaskAlarme(void* pvparameters);
 
 void app_main(void)
 {
-    esp_rom_gpio_pad_select_gpio(RELE_GPIO);
-    gpio_set_direction(RELE_GPIO, GPIO_MODE_OUTPUT);
+    esp_rom_gpio_pad_select_gpio(RELE_IN1_GPIO);
+    gpio_set_direction(RELE_IN1_GPIO, GPIO_MODE_OUTPUT);
 
     DHT11_init(DHT11_PIN);
 
@@ -217,22 +217,23 @@ void vTaskAlarme(void* pvparameters)
         if(bits2 & EV_ALARM_TEMP)
         {
             ESP_LOGE("ALARME TEMP", "EXCEDEU A TEMPERATURA");
-            gpio_set_level(RELE_GPIO, 1);
+            gpio_set_level(RELE_IN1_GPIO, 1);
         }
         else if(bits2 & EV_ALARM_UMID)
         {
             ESP_LOGE("ALARME UMID", "UMIDADE A BAIXO DO LIMITE");
-            gpio_set_level(RELE_GPIO, 1);
+            gpio_set_level(RELE_IN1_GPIO, 1);
         }
         else if(bits2 & EV_ALARM_LUM)
         {
             ESP_LOGE("ALARME LUM", "EXCEDEU A LUMINOSIDADE");
-            gpio_set_level(RELE_GPIO, 1);
+            gpio_set_level(RELE_IN1_GPIO, 1);
         }
         else
         {
-            gpio_set_level(RELE_GPIO, 0);
+            gpio_set_level(RELE_IN1_GPIO, 0);
         }
+        vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
