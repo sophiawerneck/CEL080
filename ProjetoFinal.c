@@ -8,6 +8,15 @@
 #include <esp_log.h>
 #include <dht11.h>
 #include "driver/adc.h"
+#include <driver/i2c.h>
+#include "sdkconfig.h"
+#include "HD44780.h"
+
+#define LCD_ADDR 0x27
+#define SDA_PIN  21
+#define SCL_PIN  22
+#define LCD_COLS 16
+#define LCD_ROWS 2
 
 #define EV_TEMP (1 << 0)
 #define EV_UMID (1 << 1)
@@ -19,6 +28,8 @@
 #define MOISTURE_SENSOR_ADC_CHANNEL ADC1_CHANNEL_5 //D12
 #define LDR_ADC_CHANNEL ADC1_CHANNEL_4 //D13
 #define RELE_IN1_GPIO GPIO_NUM_25  //D25
+
+//lcd = sda:d21, scl:d22
 
 struct dht11_reading data;
 
@@ -38,6 +49,7 @@ void app_main(void)
     gpio_set_direction(RELE_IN1_GPIO, GPIO_MODE_OUTPUT);
 
     DHT11_init(DHT11_PIN);
+    LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
 
     buffer_1 = xMessageBufferCreate(10);
     buffer_2 = xMessageBufferCreate(10);
@@ -191,6 +203,21 @@ void vTaskDisplay(void* pvparameters)
         if(bits == (EV_TEMP | EV_UMID | EV_LUM)) 
         {
             ESP_LOGI("DISPLAY", "Média Temperatura: %f , Média Umidade: %f %%, Média Luminosidade: %f %%",temp, umid, lum);
+
+            
+            LCD_setCursor(0, 0);
+            LCD_writeStr("LCD Funciona!");
+            LCD_clearScreen(); // Limpa o LCD
+            /*
+            char tempUmidStr[32];
+            snprintf(tempUmidStr, sizeof(tempUmidStr), "T: %.2f C  U: %.2f %%", temp, umid);
+            LCD_writeStr(tempUmidStr);
+            
+            LCD_setCursor(0, 1);
+            char lumStr[16];
+            snprintf(lumStr, sizeof(lumStr), "L: %.2f %%", lum);
+            LCD_writeStr(lumStr);
+            */
         }
         if (temp >= temp_ref)
         {
@@ -204,7 +231,7 @@ void vTaskDisplay(void* pvparameters)
         {
             xEventGroupSetBits(ev_group, EV_ALARM_LUM); 
         } 
-        //vTaskDelay(pdMS_TO_TICKS(500));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
