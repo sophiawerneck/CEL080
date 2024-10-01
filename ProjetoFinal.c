@@ -11,6 +11,13 @@
 #include <driver/i2c.h>
 #include "sdkconfig.h"
 #include "HD44780.h"
+#include "wifi.h"
+#include "mqtt.h"
+#include "nvs_flash.h"
+#include "esp_wifi.h"
+#include "esp_event.h"
+#include "esp_http_client.h"
+
 
 #define LCD_ADDR 0x27
 #define SDA_PIN  21
@@ -29,12 +36,29 @@
 #define LDR_ADC_CHANNEL ADC1_CHANNEL_4 //D13
 #define RELE_IN1_GPIO GPIO_NUM_25  //D25
 
+extern int N;
+int N = 0;
+
 //lcd = sda:d21, scl:d22
 
 struct dht11_reading data;
 
 MessageBufferHandle_t buffer_1, buffer_2, buffer_3, buffer_4, buffer_5, buffer_6;
 EventGroupHandle_t ev_group ;
+
+SemaphoreHandle_t wificonnectedSemaphore;
+SemaphoreHandle_t mqttconnectedSemaphore;
+
+void wifiConnected(void *params)
+{
+    while (1)
+    {
+        if (xSemaphoreTake(wificonnectedSemaphore, portMAX_DELAY))
+        {
+            mqtt_start();
+        }
+    }
+}
 
 void vTaskLer(void* pvparameters);
 void vTaskMedTemp(void* pvparameters);
@@ -45,11 +69,24 @@ void vTaskAlarme(void* pvparameters);
 
 void app_main(void)
 {
-    esp_rom_gpio_pad_select_gpio(RELE_IN1_GPIO);
-    gpio_set_direction(RELE_IN1_GPIO, GPIO_MODE_OUTPUT);
-
     DHT11_init(DHT11_PIN);
     LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
+
+    esp_err_t ret = nvs_flash_init();
+    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
+    {
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        ret = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK(ret);
+
+    wificonnectedSemaphore = xSemaphoreCreateBinary();
+    mqttconnectedSemaphore = xSemaphoreCreateBinary();
+
+    wifi_start();
+
+    esp_rom_gpio_pad_select_gpio(RELE_IN1_GPIO);
+    gpio_set_direction(RELE_IN1_GPIO, GPIO_MODE_OUTPUT);
 
     buffer_1 = xMessageBufferCreate(10);
     buffer_2 = xMessageBufferCreate(10);
@@ -60,17 +97,21 @@ void app_main(void)
 
     ev_group = xEventGroupCreate();
 
+    xTaskCreate(wifiConnected, "Conexao MQTT", 4096, NULL, 2, NULL);
+
     xTaskCreate(vTaskLer, "Leitura", 2048, NULL, 3 , NULL);
     xTaskCreate(vTaskMedTemp, "Media_Temp", 2048, NULL, 2 , NULL);
     xTaskCreate(vTaskMedUmid, "Media_Umid", 2048, NULL, 2 , NULL);
     xTaskCreate(vTaskMedLum, "Media_Lum", 2048, NULL, 2 , NULL);
-    xTaskCreate(vTaskDisplay, "Display", 2048, NULL, 1 , NULL);
+    xTaskCreate(vTaskDisplay, "Display", 4096, NULL, 1 , NULL);
     xTaskCreate(vTaskAlarme, "Alarme", 2048, NULL, 1 , NULL);
 }
 
 
 void vTaskLer(void* pvparameters)
 {
+    xSemaphoreTake(mqttconnectedSemaphore,portMAX_DELAY);
+    
     ESP_LOGI("LEITURA","Task leitura inicializando");
 
     adc1_config_width(ADC_WIDTH_BIT_12);
@@ -128,7 +169,6 @@ void vTaskMedTemp(void* pvparameters)
 void vTaskMedUmid(void* pvparameters)
 {
     ESP_LOGI("MEDIA_UMID","Task Media_Umid inicializando");
-
 
     int umidade;
     float media2, tensao2;
@@ -188,9 +228,15 @@ void vTaskDisplay(void* pvparameters)
     float temp;
     float umid;
     float lum;
+    char msgTemp[50];
+    char msgUmid[50];
+    char msgLum[50];
     float temp_ref = 30.00;
     float umid_ref = 215.00;
     float lum_ref = 300.00;
+
+    //xSemaphoreTake(mqttconnectedSemaphore, portMAX_DELAY);
+    ESP_LOGI("DISPLAY","Task MQTT inicializando");
 
     while(1)
     {
@@ -203,11 +249,17 @@ void vTaskDisplay(void* pvparameters)
         if(bits == (EV_TEMP | EV_UMID | EV_LUM)) 
         {
             ESP_LOGI("DISPLAY", "Média Temperatura: %f , Média Umidade: %f %%, Média Luminosidade: %f %%",temp, umid, lum);
+            sprintf(msgTemp, "MediaTemp = %f", temp);
+            sprintf(msgUmid, "MediaUmid = %f", umid);
+            sprintf(msgLum, "MediaLum = %f", lum);
+            mqtt_publish("Sensores/Temperatura", msgTemp);
+            mqtt_publish("Sensores/Umidade", msgUmid);
+            mqtt_publish("Sensores/Luminosidade", msgLum);
 
-            
+
             LCD_setCursor(0, 0);
             LCD_writeStr("LCD Funciona!");
-            LCD_clearScreen(); // Limpa o LCD
+            //LCD_clearScreen(); // Limpa o LCD
             /*
             char tempUmidStr[32];
             snprintf(tempUmidStr, sizeof(tempUmidStr), "T: %.2f C  U: %.2f %%", temp, umid);
@@ -241,84 +293,32 @@ void vTaskAlarme(void* pvparameters)
     while(1)
     {
         bits2 = xEventGroupWaitBits(ev_group, (EV_ALARM_TEMP | EV_ALARM_UMID | EV_ALARM_LUM), pdTRUE, pdFALSE, portMAX_DELAY);
+        
         if(bits2 & EV_ALARM_TEMP)
         {
             ESP_LOGE("ALARME TEMP", "EXCEDEU A TEMPERATURA");
-            gpio_set_level(RELE_IN1_GPIO, 1);
+            //gpio_set_level(RELE_IN1_GPIO, 1);
         }
-        else if(bits2 & EV_ALARM_UMID)
+        
+        if(bits2 & EV_ALARM_UMID)
         {
-            ESP_LOGE("ALARME UMID", "UMIDADE A BAIXO DO LIMITE");
+            ESP_LOGE("ALARME UMID", "UMIDADE ABAIXO DO LIMITE");
             gpio_set_level(RELE_IN1_GPIO, 1);
+            ESP_LOGI("RELE", "ATIVADO");
         }
+        
         else if(bits2 & EV_ALARM_LUM)
         {
             ESP_LOGE("ALARME LUM", "EXCEDEU A LUMINOSIDADE");
-            gpio_set_level(RELE_IN1_GPIO, 1);
+            //gpio_set_level(RELE_IN1_GPIO, 1);
         }
         else
         {
             gpio_set_level(RELE_IN1_GPIO, 0);
+            ESP_LOGI("RELE", "DESATIVADO");
         }
         vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
 
-
-
-/*
-#include <stdio.h>
-#include <string.h>
-#include "nvs_flash.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "esp_http_client.h"
-#include "esp_log.h"
-#include "freertos/semphr.h"
-#include "freertos/message_buffer.h"
-#include "wifi.h"
-#include "http_client.h"
-
-SemaphoreHandle_t wificonnectedSemaphore;
-
-MessageBufferHandle_t buffer_http;
-
-void RealizaHTTPRequest(void *params)
-{
-    char str[600];
-    size_t bytes_recebidos;
-    
-    xSemaphoreTake(wificonnectedSemaphore, portMAX_DELAY); // Só libera o semáforo quando conectou o wifi
-
-    while (1)
-    {
-        ESP_LOGI("Task", "Realiza HTTP Request");
-        http_request();
-
-        bytes_recebidos = xMessageBufferReceive(buffer_http, str, sizeof(str), portMAX_DELAY);
-        ESP_LOGW("TASK", "%s", str);
-
-        vTaskDelay(pdMS_TO_TICKS(30000));
-    }
-}
-
-void app_main(void)
-{   //Inicializa o nvs flash
-    esp_err_t ret = nvs_flash_init();
-    if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
-    {
-        ESP_ERROR_CHECK(nvs_flash_erase());
-        ret = nvs_flash_init();
-    }
-    ESP_ERROR_CHECK(ret);
-
-    wificonnectedSemaphore = xSemaphoreCreateBinary();
-
-    buffer_http = xMessageBufferCreate(600); 
-
-    wifi_start();
-
-    xTaskCreate(RealizaHTTPRequest, "Processa HTTP", 4096, NULL, 2, NULL);
-}
-*/
