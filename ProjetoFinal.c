@@ -8,9 +8,6 @@
 #include <esp_log.h>
 #include <dht11.h>
 #include "driver/adc.h"
-#include <driver/i2c.h>
-#include "sdkconfig.h"
-#include "HD44780.h"
 #include "wifi.h"
 #include "mqtt.h"
 #include "nvs_flash.h"
@@ -18,12 +15,6 @@
 #include "esp_event.h"
 #include "esp_http_client.h"
 
-
-#define LCD_ADDR 0x27
-#define SDA_PIN  21
-#define SCL_PIN  22
-#define LCD_COLS 16
-#define LCD_ROWS 2
 
 #define EV_TEMP (1 << 0)
 #define EV_UMID (1 << 1)
@@ -35,11 +26,10 @@
 #define MOISTURE_SENSOR_ADC_CHANNEL ADC1_CHANNEL_5 //D12
 #define LDR_ADC_CHANNEL ADC1_CHANNEL_4 //D13
 #define RELE_IN1_GPIO GPIO_NUM_25  //D25
+#define BUZZER_GPIO GPIO_NUM_23   //D23
 
 extern int N;
 int N = 0;
-
-//lcd = sda:d21, scl:d22
 
 struct dht11_reading data;
 
@@ -70,7 +60,6 @@ void vTaskAlarme(void* pvparameters);
 void app_main(void)
 {
     DHT11_init(DHT11_PIN);
-    LCD_init(LCD_ADDR, SDA_PIN, SCL_PIN, LCD_COLS, LCD_ROWS);
 
     esp_err_t ret = nvs_flash_init();
     if (ret == ESP_ERR_NVS_NO_FREE_PAGES || ret == ESP_ERR_NVS_NEW_VERSION_FOUND)
@@ -87,6 +76,9 @@ void app_main(void)
 
     esp_rom_gpio_pad_select_gpio(RELE_IN1_GPIO);
     gpio_set_direction(RELE_IN1_GPIO, GPIO_MODE_OUTPUT);
+
+    esp_rom_gpio_pad_select_gpio(BUZZER_GPIO);
+    gpio_set_direction(BUZZER_GPIO, GPIO_MODE_OUTPUT);
 
     buffer_1 = xMessageBufferCreate(10);
     buffer_2 = xMessageBufferCreate(10);
@@ -232,11 +224,9 @@ void vTaskDisplay(void* pvparameters)
     char msgUmid[50];
     char msgLum[50];
     float temp_ref = 30.00;
-    float umid_ref = 215.00;
-    float lum_ref = 300.00;
+    float umid_ref = 50;
+    float lum_ref = 50.00;
 
-    //xSemaphoreTake(mqttconnectedSemaphore, portMAX_DELAY);
-    ESP_LOGI("DISPLAY","Task MQTT inicializando");
 
     while(1)
     {
@@ -256,20 +246,6 @@ void vTaskDisplay(void* pvparameters)
             mqtt_publish("Sensores/Umidade", msgUmid);
             mqtt_publish("Sensores/Luminosidade", msgLum);
 
-
-            LCD_setCursor(0, 0);
-            LCD_writeStr("LCD Funciona!");
-            //LCD_clearScreen(); // Limpa o LCD
-            /*
-            char tempUmidStr[32];
-            snprintf(tempUmidStr, sizeof(tempUmidStr), "T: %.2f C  U: %.2f %%", temp, umid);
-            LCD_writeStr(tempUmidStr);
-            
-            LCD_setCursor(0, 1);
-            char lumStr[16];
-            snprintf(lumStr, sizeof(lumStr), "L: %.2f %%", lum);
-            LCD_writeStr(lumStr);
-            */
         }
         if (temp >= temp_ref)
         {
@@ -304,6 +280,9 @@ void vTaskAlarme(void* pvparameters)
         {
             ESP_LOGE("ALARME UMID", "UMIDADE ABAIXO DO LIMITE");
             gpio_set_level(RELE_IN1_GPIO, 1);
+            gpio_set_level(BUZZER_GPIO, 1); // Ativar buzzer
+            vTaskDelay(pdMS_TO_TICKS(1000)); // Manter o buzzer ligado por 1 segundo
+            gpio_set_level(BUZZER_GPIO, 0); // Desativar buzzer
             ESP_LOGI("RELE", "ATIVADO");
         }
         
