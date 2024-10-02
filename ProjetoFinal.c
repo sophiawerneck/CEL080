@@ -180,7 +180,7 @@ void vTaskMedUmid(void* pvparameters)
         if(cont == 10)
         {
             media2 = soma/10;
-            tensao2 = (media2/1024)*100;
+            tensao2 = (media2/4095)*3.3*100; 
             xMessageBufferSend(buffer_5, &tensao2, sizeof(tensao2),portMAX_DELAY);
             xEventGroupSetBits(ev_group,EV_UMID);
             soma = 0;
