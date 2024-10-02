@@ -124,10 +124,10 @@ void vTaskLer(void* pvparameters)
 
         //Ler luminosidade
         int valor_lum = adc1_get_raw(LDR_ADC_CHANNEL);
-        ESP_LOGW("LEITURA", "Valor do sensor de luminosidade: %d", valor_lum);
+        //ESP_LOGW("LEITURA", "Valor do sensor de luminosidade: %d", valor_lum);
         xMessageBufferSend(buffer_3, &valor_lum, sizeof(valor_lum), portMAX_DELAY);
 
-        vTaskDelay(pdMS_TO_TICKS(300));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -153,7 +153,7 @@ void vTaskMedTemp(void* pvparameters)
             soma = 0;
             cont = 0;
         }
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -170,20 +170,26 @@ void vTaskMedUmid(void* pvparameters)
     while(1)
     {   
         xMessageBufferReceive(buffer_2, &umidade, sizeof(umidade),portMAX_DELAY);
-        cont++;
-        soma = soma + umidade;
+        //cont++;
+        //soma = soma + umidade;
+        if(umidade != 0)
+        {
+            cont++;
+            soma += umidade;
+        }
         if(cont == 10)
         {
             media2 = soma/10;
-            tensao2 = (media2/4095)*3.3*100;
+            tensao2 = (media2/1024)*100;
             xMessageBufferSend(buffer_5, &tensao2, sizeof(tensao2),portMAX_DELAY);
             xEventGroupSetBits(ev_group,EV_UMID);
             soma = 0;
             cont = 0;
         }
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
+
 
 void vTaskMedLum(void* pvparameters)
 {
@@ -198,8 +204,13 @@ void vTaskMedLum(void* pvparameters)
     while(1)
     {   
         xMessageBufferReceive(buffer_3, &luminosidade, sizeof(luminosidade),portMAX_DELAY);
-        cont++;
-        soma = soma + luminosidade;
+        //cont++;
+        //soma = soma + luminosidade;
+         if(luminosidade != 0)
+        {
+            cont++;
+            soma += luminosidade;
+        }
         if(cont == 10)
         {
             media3 = soma/10;
@@ -209,7 +220,7 @@ void vTaskMedLum(void* pvparameters)
             soma = 0;
             cont = 0;
         }
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
@@ -224,7 +235,7 @@ void vTaskDisplay(void* pvparameters)
     char msgUmid[50];
     char msgLum[50];
     float temp_ref = 30.00;
-    float umid_ref = 50;
+    float umid_ref = 40;
     float lum_ref = 50.00;
 
 
@@ -296,7 +307,7 @@ void vTaskAlarme(void* pvparameters)
             gpio_set_level(RELE_IN1_GPIO, 0);
             ESP_LOGI("RELE", "DESATIVADO");
         }
-        vTaskDelay(pdMS_TO_TICKS(200));
+        vTaskDelay(pdMS_TO_TICKS(500));
     }
 }
 
