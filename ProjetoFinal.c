@@ -170,8 +170,6 @@ void vTaskMedUmid(void* pvparameters)
     while(1)
     {   
         xMessageBufferReceive(buffer_2, &umidade, sizeof(umidade),portMAX_DELAY);
-        //cont++;
-        //soma = soma + umidade;
         if(umidade != 0)
         {
             cont++;
@@ -204,9 +202,7 @@ void vTaskMedLum(void* pvparameters)
     while(1)
     {   
         xMessageBufferReceive(buffer_3, &luminosidade, sizeof(luminosidade),portMAX_DELAY);
-        //cont++;
-        //soma = soma + luminosidade;
-         if(luminosidade != 0)
+        if(luminosidade != 0)
         {
             cont++;
             soma += luminosidade;
@@ -250,9 +246,9 @@ void vTaskDisplay(void* pvparameters)
         if(bits == (EV_TEMP | EV_UMID | EV_LUM)) 
         {
             ESP_LOGI("DISPLAY", "Média Temperatura: %f , Média Umidade: %f %%, Média Luminosidade: %f %%",temp, umid, lum);
-            sprintf(msgTemp, "MediaTemp = %f", temp);
-            sprintf(msgUmid, "MediaUmid = %f", umid);
-            sprintf(msgLum, "MediaLum = %f", lum);
+            sprintf(msgTemp, "%.1f", temp);
+            sprintf(msgUmid, "%.1f", umid);
+            sprintf(msgLum, "%.1f", lum);
             mqtt_publish("Sensores/Temperatura", msgTemp);
             mqtt_publish("Sensores/Umidade", msgUmid);
             mqtt_publish("Sensores/Luminosidade", msgLum);
@@ -277,6 +273,7 @@ void vTaskDisplay(void* pvparameters)
 void vTaskAlarme(void* pvparameters)
 {
     EventBits_t bits2;
+    char rele[2];
     while(1)
     {
         bits2 = xEventGroupWaitBits(ev_group, (EV_ALARM_TEMP | EV_ALARM_UMID | EV_ALARM_LUM), pdTRUE, pdFALSE, portMAX_DELAY);
@@ -284,13 +281,15 @@ void vTaskAlarme(void* pvparameters)
         if(bits2 & EV_ALARM_TEMP)
         {
             ESP_LOGE("ALARME TEMP", "EXCEDEU A TEMPERATURA");
-            //gpio_set_level(RELE_IN1_GPIO, 1);
+            
         }
         
         if(bits2 & EV_ALARM_UMID)
         {
             ESP_LOGE("ALARME UMID", "UMIDADE ABAIXO DO LIMITE");
             gpio_set_level(RELE_IN1_GPIO, 1);
+            sprintf(rele, "1");
+            mqtt_publish("Sensores/Rele", rele);
             gpio_set_level(BUZZER_GPIO, 1); // Ativar buzzer
             vTaskDelay(pdMS_TO_TICKS(1000)); // Manter o buzzer ligado por 1 segundo
             gpio_set_level(BUZZER_GPIO, 0); // Desativar buzzer
@@ -300,11 +299,13 @@ void vTaskAlarme(void* pvparameters)
         else if(bits2 & EV_ALARM_LUM)
         {
             ESP_LOGE("ALARME LUM", "EXCEDEU A LUMINOSIDADE");
-            //gpio_set_level(RELE_IN1_GPIO, 1);
+            
         }
         else
         {
             gpio_set_level(RELE_IN1_GPIO, 0);
+            sprintf(rele, "0");
+            mqtt_publish("Sensores/Rele", rele);
             ESP_LOGI("RELE", "DESATIVADO");
         }
         vTaskDelay(pdMS_TO_TICKS(500));
